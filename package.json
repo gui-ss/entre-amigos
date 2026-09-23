@@ -1,0 +1,37 @@
+{
+  "name": "entre-amigos",
+  "version": "0.2.0",
+  "description": "Tela, som e conversa para ate cinco amigos",
+  "author": "Entre Amigos",
+  "license": "MIT",
+  "main": "app/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.cjs",
+    "dist": "electron-builder --win nsis --x64",
+    "server": "node app/server.cjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "electron": "44.4.4",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "local.entreamigos.desktop",
+    "productName": "Entre Amigos",
+    "files": [
+      "app/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
