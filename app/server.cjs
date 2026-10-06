@@ -6,7 +6,7 @@ function startServer(port=47831,host='0.0.0.0',options={}){
  const grace=options.graceMs??90000;
  return new Promise((resolve,reject)=>{
   const rooms=new Map();let closing=false;
-  const httpServer=http.createServer((req,res)=>{res.writeHead(req.url==='/'||req.url==='/health'?200:404,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(req.url==='/'||req.url==='/health'?{service:'lobby',ok:true,version:'0.4.0',protocol:2}:{error:'Not found'}));});
+  const httpServer=http.createServer((req,res)=>{res.writeHead(req.url==='/'||req.url==='/health'?200:404,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(req.url==='/'||req.url==='/health'?{service:'lobby',ok:true,version:'0.5.0',protocol:2}:{error:'Not found'}));});
   const wss=new WebSocketServer({server:httpServer,maxPayload:65536});
   const send=(s,m)=>{if(s?.readyState===1)s.send(JSON.stringify(m));};
   const publicMember=p=>({id:p.id,name:p.name,online:!!p.socket});
@@ -22,19 +22,21 @@ function startServer(port=47831,host='0.0.0.0',options={}){
     if(Date.now()-start>1000){start=Date.now();count=0;}if(++count>150)return s.close(1008,'Limite');
     let m;try{m=JSON.parse(raw);}catch{return;}if(!m||typeof m!=='object'||Array.isArray(m))return;
     if(m.type==='ping'){send(s,{type:'pong'});return;}
-    if(['create','join','resume'].includes(m.type)){
+    if(['lobby','create','join','resume'].includes(m.type)){
      if(s.room)return fail('ALREADY_JOINED','Você já está em uma sala.');
      let code=String(m.code||'').trim().toUpperCase(),r,p;
-     if(m.type==='create'){
+     if(m.type==='lobby'){
+      code='LOBBY';r=rooms.get(code);if(!r){r={members:new Map(),presenter:null,owner:null,locked:false};rooms.set(code,r);}
+     }else if(m.type==='create'){
       if(rooms.size>=100)return fail('SERVER_FULL','Servidor cheio. Tente mais tarde.');
       do{code=randomBytes(5).toString('hex').toUpperCase();}while(rooms.has(code));
       r={members:new Map(),presenter:null,owner:null,locked:false};rooms.set(code,r);
      }else r=rooms.get(code);
      if(!r)return fail('ROOM_NOT_FOUND','Sala não encontrada. O servidor pode ter reiniciado; crie uma nova sala.');
      if(m.type==='resume'){
-      if(typeof m.token!=='string'||m.token.length!==64)return fail('SESSION_EXPIRED','A sessão expirou. Entre novamente pelo convite.');
+      if(typeof m.token!=='string'||m.token.length!==64)return fail('SESSION_EXPIRED','A sessão expirou. Clique em Entrar na sala novamente.');
       p=[...r.members.values()].find(x=>x.token===m.token);
-      if(!p)return fail('SESSION_EXPIRED','A sessão expirou. Entre novamente pelo convite.');
+      if(!p)return fail('SESSION_EXPIRED','A sessão expirou. Clique em Entrar na sala novamente.');
       clearTimeout(p.timer);const old=p.socket;p.socket=null;old?.close(4001,'Sessão retomada');
       broadcast(r,{type:'left',id:p.id});
      }else{
